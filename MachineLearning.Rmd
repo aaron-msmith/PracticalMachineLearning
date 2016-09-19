@@ -1,0 +1,85 @@
+title: "MachineLearningProject"
+author: "Aaron Smth"
+date: "September 12, 2016"
+output: html_document
+---
+
+**Background**
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).  
+
+**What you should submit**
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+**Data Preperation**  
+*Note: Please see appendix for data exploration*
+
+```{r}
+#Set Seed
+#set.seed(12345)
+#Load packages
+library(caret)
+library(randomForest)
+#load data
+TrainingData <- read.csv('pml-training.csv', stringsAsFactors = F, na.strings = "")
+TestData <- read.csv('pml-testing.csv', stringsAsFactors = F, na.strings = "")
+
+#clean data
+
+#Remove first seven columns of data as they are not predictors of #form, these fields include record ID, Username, timestamps etc.  #Please see appendix for exploratory data analysis
+TrainingData <- TrainingData[, -(1:7)]
+TestData <- TestData[, -(1:7)]
+
+#set classe as factor data type
+TrainingData$classe <- as.factor(TrainingData$classe)
+
+#remove fields with near zero variance as they will not be good predictors
+nzv <- nearZeroVar(TrainingData)
+TrainingData  <- TrainingData[-nzv]
+nzv <- nearZeroVar(TestData)
+TestData <- TestData[-nzv]
+
+#remove fields with missing data
+TrainingData <- TrainingData[colSums(is.na(TrainingData)) == 0]
+TestData <- TestData[colSums(is.na(TestData)) == 0]
+
+#Split training data into training and validation data subsets for cross validation
+trainIndex <- createDataPartition(TrainingData$classe, list = F, p = 0.7)
+TrainSubset <- TrainingData[trainIndex, ]
+ValidationSubset <- TrainingData[- trainIndex, ]
+```
+
+**Modelselection - training data**
+
+Begin with random forest model with the training data
+```{r}
+# Train random forest model
+RFModel1 <- randomForest(classe ~ .,data = TrainSubset, mtry = 25,ntree = 1000,proximity = F)
+print(RFModel1)
+```
+
+**confusion matrix**  
+Use validation data set to estimate out of sample error    
+```{r}
+RFPrediction1 <- predict(RFModel1, ValidationSubset)
+ConMat <- confusionMatrix(ValidationSubset$classe, RFPrediction1)
+print(ConMat)
+```
+  
+**Plot variables by importance**
+```{r}
+# Top Ten most important predictors
+varImpPlot(RFModel1, n.var = 10, main = "Top 10 Predictors")
+
+```
+
+**Appendix**
+
+*Data Exploration*
+```{r}
+#Review file variables
+str(TrainingData)
+summary(TrainingData)
+
+```
